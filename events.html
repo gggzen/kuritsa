@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Курица: все ивенты</title>
+<style>
+  :root { --bg:#15120e; --card:#1e1a14; --line:#3a3128; --gold:#ffd98a; --text:#f0e6d2; --dim:#b6a68e; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px 18px 60px; background:radial-gradient(1200px 600px at 50% -10%, #2a2216, var(--bg)); color:var(--text); font:15px/1.45 system-ui, "Segoe UI", sans-serif; }
+  h1 { margin:0 0 4px; font-size:26px; letter-spacing:.5px; }
+  .sub { color:var(--dim); margin-bottom:18px; font-size:14px; }
+  .bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px; }
+  input { flex:1 1 260px; min-width:200px; padding:9px 12px; border-radius:9px; border:1px solid var(--line); background:#120f0b; color:var(--text); font:inherit; }
+  input:focus { outline:none; border-color:var(--gold); }
+  .chip { padding:6px 10px; border:1px solid var(--line); border-radius:999px; cursor:pointer; color:var(--dim); background:#181410; font-size:13px; }
+  .chip.on { color:#15120e; background:var(--gold); border-color:var(--gold); font-weight:700; }
+  .count { color:var(--dim); font-size:13px; margin-left:auto; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  th, td { padding:10px 12px; text-align:left; vertical-align:top; border-bottom:1px solid var(--line); }
+  th { position:sticky; top:0; background:#241e16; color:var(--gold); font-size:13px; text-transform:uppercase; letter-spacing:.6px; z-index:2; }
+  tr:last-child td { border-bottom:none; }
+  tbody tr:hover { background:#262017; }
+  td.num { color:var(--dim); width:38px; }
+  td.name { font-weight:700; white-space:nowrap; }
+  .code { color:#8f8272; font-family:ui-monospace, Consolas, monospace; font-size:12px; }
+  .task { color:#cfe8b0; }
+  .bonus { color:var(--gold); white-space:nowrap; text-align:right; }
+  .new { color:#15120e; background:#9fe08a; border-radius:5px; padding:1px 6px; font-size:11px; font-weight:800; margin-left:6px; vertical-align:middle; }
+  .adm { color:#15120e; background:#d8b4ff; border-radius:5px; padding:1px 6px; font-size:11px; font-weight:800; margin-left:6px; vertical-align:middle; }
+  footer { margin-top:16px; color:var(--dim); font-size:13px; }
+</style>
+</head>
+<body>
+<h1>КУРИЦА: СИМУЛЯТОР ЯРОСТИ — таблица ивентов</h1>
+<div class="sub">Все ивенты игры: что происходит, какое задание и сколько дают за выполнение.</div>
+
+<div class="bar">
+  <input id="q" placeholder="Поиск по названию или механике…" autocomplete="off">
+  <span class="chip on" data-f="all">Все</span>
+  <span class="chip" data-f="new">Новые 10</span>
+  <span class="chip" data-f="task">С заданием</span>
+  <span class="chip" data-f="danger">Опасные</span>
+  <span class="count" id="count"></span>
+</div>
+
+<table>
+  <thead>
+    <tr><th>№</th><th>Ивент</th><th>Что происходит</th><th>Задание</th><th>Награда</th></tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+<footer>36 ивентов в случайном пуле плюс «НАОБОРОТ», который запускается только вручную из админки. Ивенты идут каждые 60 секунд, в онлайне — синхронно у всех.</footer>
+
+<script>
+const EVENTS = [
+  ["НЛО", "ufo", "Над фермой висит тарелка и светит лучом. Яйца в луч засчитываются.", "закидай луч НЛО: 3 раза", 400, ""],
+  ["ГУСИ", "geese", "Гусиная мафия идёт через двор и шипит на всё живое.", "разгони гусей: тронь 3", 380, ""],
+  ["КУРИНЫЙ РЕЙВ", "rave", "Танцпол, колонки, бас слышно у соседа.", "танцуй на танцполе: 4 сек", 400, ""],
+  ["ФЕРМЕР-КУРИЦА", "farmerChicken", "Фермер превращается в курицу, а затем в куриного бога.", "—", 0, ""],
+  ["КУРИНЫЙ БОГ", "god", "С неба спускается куриный бог и принимает подношения яйцами.", "попади в куриного бога: 2 раза", 400, ""],
+  ["ПЕЛЬМЕНЬ", "pelmen", "С неба падает пельмень. Никто не знает зачем.", "съешь пельмень: 2 раза", 250, ""],
+  ["ТРАКТОР", "tractor", "Трактор катается по двору и не уступает дорогу.", "попади в трактор: 3 раза", 250, ""],
+  ["ОГУРЕЧНЫЙ ДОЖДЬ", "cucumbers", "С неба идут огурцы. Учёные молчат.", "уклоняйся и собирай очки", 0, ""],
+  ["ГИГАНТСКИЙ КОТ", "cat", "Огромный кот лежит на ферме и игнорирует всё.", "попади в кота: 2 раза", 300, ""],
+  ["ИНДЮК", "turkey", "Парад барона индюка в короне.", "сбей корону барона: 2 раза", 300, ""],
+  ["СКУФ", "skuf", "Скуф в тапках вышел во двор и всё осуждает.", "закидай скуфа: 3 раза", 300, ""],
+  ["ЧАД", "chad", "Гигачад спускается с неба и одобряет курицу.", "дождись одобрения", 250, ""],
+  ["КАПИБАРЫ", "capybaras", "Капибары идут через ферму. Все спокойны.", "погладь всех капибар", 300, ""],
+  ["МЕТЕОРИТ", "meteor", "Метеорит летит на ферму.", "разбей метеорит до падения", 250, ""],
+  ["ТОРНАДО", "tornado", "Торнадо ходит по двору и поднимает сено.", "закидай торнадо: 3 раза", 250, ""],
+  ["ШТОРМ", "storm", "Гроза, молнии, яйца работают громоотводом.", "разбей яйца соседа: 3", 250, ""],
+  ["АВТОБУС", "bus", "Приезжает автобус. Дверь открыта недолго.", "залезь в автобус", 700, ""],
+  ["СВАДЬБА", "wedding", "Свадьба на ферме: молодые, гости, драка.", "попади в молодых: 2 раза", 300, ""],
+  ["ПИЦЦА", "pizza", "С неба падает пицца. Горячая.", "съешь 3 куска пиццы", 250, ""],
+  ["ВЫБОРЫ", "election", "Выборы на ферме: урна, бюллетени, подкуп.", "брось яйцо в урну", 250, ""],
+  ["САЛЮТ", "fireworks", "Салют в честь курицы. Фермер не в курсе.", "посмотри салют", 250, ""],
+  ["ЙОГА", "yoga", "Йога на ферме: капибара уже в позе, зомби-куры рядом.", "отправь всех зомби", 300, ""],
+  ["ЗОМБИ", "zombie", "Зомби-куры клюют всё живое и неживое.", "отправь всех зомби: 4", 300, ""],
+  ["НАОБОРОТ", "reverse", "Игрок становится огромным яйцом, фермер — гигантскими граблями с глазами. Бросок выпускает курицу, фермер швыряет телами.", "швырни курицу в фермера: 4 раза", 320, "adm"],
+  ["ШИ-ТЦУ", "shihTzu", "Ши-тцу бегает за курицей и тявкает, после попаданий уносит тапок.", "попади в ши-тцу: 3 раза", 320, ""],
+  ["КОТ-РАЗДУВ", "balloonCat", "Кот надувается и стреляет лазерами из глаз. Луч подводится, потом бьёт — надо уходить с линии.", "попади в кота яйцами: 10 раз", 320, ""],
+  ["СУД", "court", "Суд над курицей за 412 эпизодов бросания яиц.", "дождись приговора", 300, ""],
+  ["ЯИЧНЫЙ ДОЖДЬ", "eggRain", "Яйца падают с метками на земле: попал под метку — минус здоровье, увернулся — плюс к заданию.", "уклонись от яиц: 5 раз", 260, "new"],
+  ["КУРЬЕР", "courier", "Курьер на скутере носится по ферме и кидает посылки в игрока.", "попади в курьера: 3 раза", 240, "new"],
+  ["ГРИБНОЙ ТУМАН", "mushroomFog", "Кольцо тумана сжимается с 19 до 6.5 м, снаружи душит. Внутри шесть грибов.", "собери грибы: 5 штук", 250, "new"],
+  ["БАРАН-ТАРАН", "ram", "Баран наводится, трясётся и разгоняется на 16 м/с. Задел — урон.", "уклонись от барана: 3 раза", 260, "new"],
+  ["ДРОН-ДОСТАВЩИК", "drone", "Дрон летает над курицей и сбрасывает взрывающиеся посылки.", "сбей дрона: 3 раза", 280, "new"],
+  ["КОРОВА ПОЁТ", "cowSinger", "Корова поёт волнами-кольцами: попал в кольцо — минус здоровье.", "пережди волны пения: 3", 280, "new"],
+  ["УТКА-БЕГЛЕЦ", "duck", "Утка убегает и после каждого попадания ускоряется.", "попади в утку: 3 раза", 260, "new"],
+  ["ПЕТУХ-БОКСЁР", "boxer", "Петух подходит, перчатки мигают, затем джеб вблизи.", "уклонись от джеба: 3 раза", 280, "new"],
+  ["КУРЫ-ТЕЛЕПОРТЫ", "teleport", "Три курицы скачут по двору каждые 1.2 секунды.", "попади по телепортам: 5 раз", 300, "new"],
+  ["ЛУННАЯ ГРАВИТАЦИЯ", "lowGrav", "Гравитация втрое ниже у игрока и у яиц, прыжок выше.", "прыгни в невесомости: 5 раз", 280, "new"]
+];
+
+const rowsEl = document.getElementById('rows');
+const countEl = document.getElementById('count');
+const qEl = document.getElementById('q');
+let filter = 'all';
+
+const DANGER = ['ufo', 'tractor', 'meteor', 'tornado', 'storm', 'zombie', 'reverse', 'balloonCat', 'eggRain', 'ram', 'drone', 'cowSinger', 'boxer', 'courier', 'farmerChicken'];
+
+function render() {
+  const q = qEl.value.trim().toLowerCase();
+  let n = 0;
+  const html = [];
+  EVENTS.forEach((e, i) => {
+    const [name, code, desc, task, bonus, tag] = e;
+    if (filter === 'new' && tag !== 'new') return;
+    if (filter === 'task' && (!task || task === '—')) return;
+    if (filter === 'danger' && DANGER.indexOf(code) < 0) return;
+    if (q && (name + ' ' + code + ' ' + desc + ' ' + task).toLowerCase().indexOf(q) < 0) return;
+    n++;
+    const badge = tag === 'new' ? '<span class="new">NEW</span>' : (tag === 'adm' ? '<span class="adm">АДМИН</span>' : '');
+    html.push('<tr>' +
+      '<td class="num">' + (i + 1) + '</td>' +
+      '<td class="name">' + name + badge + '<div class="code">' + code + '</div></td>' +
+      '<td>' + desc + '</td>' +
+      '<td class="task">' + (task || '—') + '</td>' +
+      '<td class="bonus">' + (bonus ? '+' + bonus : '—') + '</td>' +
+      '</tr>');
+  });
+  rowsEl.innerHTML = html.join('');
+  countEl.textContent = 'показано ' + n + ' из ' + EVENTS.length;
+}
+
+document.querySelectorAll('.chip').forEach(ch => {
+  ch.onclick = () => {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+    ch.classList.add('on');
+    filter = ch.dataset.f;
+    render();
+  };
+});
+qEl.oninput = render;
+render();
+</script>
+</body>
+</html>

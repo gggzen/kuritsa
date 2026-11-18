@@ -1,0 +1,16 @@
+{
+  "name": "Курица: симулятор ярости",
+  "short_name": "Курица",
+  "description": "Ферма, яйца и 37 ивентов. Работает офлайн.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#15120e",
+  "theme_color": "#15120e",
+  "lang": "ru",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
